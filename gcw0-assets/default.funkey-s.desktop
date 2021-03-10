@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=ECWolf
-Comment=An ECWolf port for the Zero
+Comment=ECWolf
 Exec=ecwolf
 Terminal=false
 Type=Application

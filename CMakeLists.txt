@@ -16,7 +16,7 @@ if( FORCE_CROSSCOMPILE )
 endif( FORCE_CROSSCOMPILE )
 
 if(CMAKE_CROSSCOMPILING)
-	set(IMPORT_EXECUTABLES "IMPORTFILE-NOTFOUND" CACHE FILEPATH "Export file from native build.")
+	set(IMPORT_EXECUTABLES "/home/jack/Desktop/dev/funkey/ecwolf/build/ImportExecutables.cmake" CACHE FILEPATH "Export file from native build.")
 	include(${IMPORT_EXECUTABLES})
 endif(CMAKE_CROSSCOMPILING)
 

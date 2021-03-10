@@ -2,14 +2,6 @@ if(COMMAND cmake_policy)
 	cmake_policy(SET CMP0003 NEW)
 endif(COMMAND cmake_policy)
 
-get_target_property( UPDATEREVISION_EXE updaterevision LOCATION )
-
-add_custom_target(revision_check ALL
-	COMMAND ${UPDATEREVISION_EXE} . ${CMAKE_CURRENT_SOURCE_DIR}/svnrevision.h
-	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-	DEPENDS updaterevision
-)
-
 include(CheckCXXSourceCompiles)
 include(CheckFunctionExists)
 include(FindPkgConfig)
@@ -284,9 +276,13 @@ add_executable(ecwolf ${PLATFORM_EXE_FLAGS}
 	${EXTRA_FILES}
 )
 
-add_dependencies(ecwolf lzma gdtoa revision_check)
+add_dependencies(ecwolf lzma gdtoa)
 target_link_libraries(ecwolf ${EXTRA_LIBRARIES} ${SDL_LIBRARY} ${SDLMIXER_LIBRARY} ${ZLIB_LIBRARY} ${BZIP2_LIBRARIES} ${JPEG_LIBRARIES} lzma gdtoa)
 set_target_properties(ecwolf PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${OUTPUT_DIR})
+
+if (CMAKE_CROSSCOMPILING)
+  target_link_libraries(ecwolf SDL_sound)
+endif()
 
 # Install
 install(TARGETS ecwolf BUNDLE DESTINATION ${OUTPUT_DIR} RUNTIME DESTINATION bin COMPONENT Runtime)
