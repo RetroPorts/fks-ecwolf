@@ -85,6 +85,16 @@ endif(NOT JPEG_FOUND OR INTERNAL_JPEG)
 
 if(MSVC)
 	add_definitions(-D_CRT_SECURE_NO_DEPRECATE -D_CRT_NONSTDC_NO_DEPRECATE)
+
+  set(SDL_INCLUDE_DIR D:\dev\sdl\SDL1.2.15\include)
+  set(SDL_MIXER_INCLUDE_DIR D:\dev\sdl\SDL_mixer-1.2.12\include)
+  
+  set(SDL_LIBRARY SDL)
+  set(SDL_MIXER_LIBRARY SDL_mixer)
+
+  link_directories(D:\dev\sdl\SDL1.2.15\lib\x64)
+  link_directories(D:\dev\sdl\SDL_mixer-1.2.12\lib\x64)
+
 endif(MSVC)
 
 option(BUILD_PATCHUTIL "Builds the Wolf patching utility." OFF)

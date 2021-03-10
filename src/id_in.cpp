@@ -314,20 +314,21 @@ static void processEvent(SDL_Event *event)
 					Quit(NULL);
 			}
 
-			if(LastScan == SCANCODE_UNMASK(SDLK_KP_ENTER)) LastScan = SCANCODE_UNMASK(SDLK_RETURN);
-			else if(LastScan == SCANCODE_UNMASK(SDLK_RSHIFT)) LastScan = SCANCODE_UNMASK(SDLK_LSHIFT);
-			else if(LastScan == SCANCODE_UNMASK(SDLK_RALT)) LastScan = SCANCODE_UNMASK(SDLK_LALT);
-			else if(LastScan == SCANCODE_UNMASK(SDLK_RCTRL)) LastScan = SCANCODE_UNMASK(SDLK_LCTRL);
-
-      else if(LastScan == SCANCODE_UNMASK(SDLK_a)) LastScan = SCANCODE_UNMASK(SDLK_LCTRL);
-      else if(LastScan == SCANCODE_UNMASK(SDLK_b)) LastScan = SCANCODE_UNMASK(SDLK_SPACE);
-
-      else if(LastScan == SCANCODE_UNMASK(SDLK_u)) LastScan = SCANCODE_UNMASK(SDLK_UP);
-      else if(LastScan == SCANCODE_UNMASK(SDLK_d)) LastScan = SCANCODE_UNMASK(SDLK_DOWN);
-      else if(LastScan == SCANCODE_UNMASK(SDLK_r)) LastScan = SCANCODE_UNMASK(SDLK_RIGHT);
-      else if(LastScan == SCANCODE_UNMASK(SDLK_l)) LastScan = SCANCODE_UNMASK(SDLK_LEFT);
-      else if(LastScan == SCANCODE_UNMASK(SDLK_s)) LastScan = SCANCODE_UNMASK(SDLK_RETURN);
-      else if(LastScan == SCANCODE_UNMASK(SDLK_k)) LastScan = SCANCODE_UNMASK(SDLK_ESCAPE);
+      switch (LastScan)
+      {
+        case SCANCODE_UNMASK(SDLK_KP_ENTER): LastScan = SCANCODE_UNMASK(SDLK_RETURN); break;
+        case SCANCODE_UNMASK(SDLK_RSHIFT): LastScan = SCANCODE_UNMASK(SDLK_LSHIFT); break;
+        case SCANCODE_UNMASK(SDLK_RALT): LastScan = SCANCODE_UNMASK(SDLK_LALT); break;
+        case SCANCODE_UNMASK(SDLK_RCTRL): LastScan = SCANCODE_UNMASK(SDLK_LCTRL); break;
+        case SCANCODE_UNMASK(SDLK_u): LastScan = SCANCODE_UNMASK(SDLK_UP); break;
+        case SCANCODE_UNMASK(SDLK_d): LastScan = SCANCODE_UNMASK(SDLK_DOWN); break;
+        case SCANCODE_UNMASK(SDLK_r): LastScan = SCANCODE_UNMASK(SDLK_RIGHT); break;
+        case SCANCODE_UNMASK(SDLK_l): LastScan = SCANCODE_UNMASK(SDLK_LEFT); break;
+        case SCANCODE_UNMASK(SDLK_s): LastScan = SCANCODE_UNMASK(SDLK_RETURN); break;
+        case SCANCODE_UNMASK(SDLK_k): LastScan = SCANCODE_UNMASK(SDLK_ESCAPE); break;
+        case SCANCODE_UNMASK(SDLK_a): LastScan = SCANCODE_UNMASK(SDLK_LCTRL); break;
+        case SCANCODE_UNMASK(SDLK_b): LastScan = SCANCODE_UNMASK(SDLK_SPACE); break;
+      }
 
 			int sym = LastScan;
 			if(sym >= 'a' && sym <= 'z')
@@ -356,35 +357,28 @@ static void processEvent(SDL_Event *event)
 		case SDL_KEYUP:
 		{
 			int key = event->key.keysym.sym;
-			if(key == SDLK_KP_ENTER) key = SDLK_RETURN;
-			else if(key == SDLK_RSHIFT) key = SDLK_LSHIFT;
-			else if(key == SDLK_RALT) key = SDLK_LALT;
-			else if(key == SDLK_RCTRL) key = SDLK_LCTRL;
-      else if(key == SDLK_u) key = SDLK_UP;
-      else if(key == SDLK_d) key = SDLK_DOWN;
-      else if(key == SDLK_r) key = SDLK_RIGHT;
-      else if(key == SDLK_l) key = SDLK_LEFT;
-      else if(key == SDLK_s) key = SDLK_RETURN;
-      else if(key == SDLK_k) key = SDLK_ESCAPE;
-      else if(key == SDLK_a) key = SDLK_LCTRL;
-      else if(key == SDLK_b) key = SDLK_SPACE;
+
+      switch (key)
+      {
+        case SDLK_KP_ENTER: key = SDLK_RETURN; break;
+        case SDLK_RSHIFT: key = SDLK_LSHIFT; break;
+        case SDLK_RALT: key = SDLK_LALT; break;
+        case SDLK_RCTRL: key = SDLK_LCTRL; break;
+        case SDLK_u: key = SDLK_UP; break;
+        case SDLK_d: key = SDLK_DOWN; break;
+        case SDLK_r: key = SDLK_RIGHT; break;
+        case SDLK_l: key = SDLK_LEFT; break;
+        case SDLK_s: key = SDLK_RETURN; break;
+        case SDLK_k: key = SDLK_ESCAPE; break;
+        case SDLK_a: key = SDLK_LCTRL; break;
+        case SDLK_b: key = SDLK_SPACE; break;
+      }
 
 			if(SCANCODE_UNMASK(key)<SDLK_LAST)
 				Keyboard[SCANCODE_UNMASK(key)] = 0;
+
 			break;
 		}
-
-		/*case SDL_ACTIVEEVENT:
-		{
-			if(fullscreen && (event->active.state & SDL_APPACTIVE) != 0)
-			{
-					if(event->active.gain)
-					{
-						NeedRestore = false;
-					}
-					else NeedRestore = true;
-			}
-		}*/
 	}
 }
 

@@ -82,7 +82,8 @@ void Config::LocateConfigFile(int argc, char* argv[])
 
 void Config::ReadConfig()
 {
-	// Check to see if we have located the config file.
+  return;
+  // Check to see if we have located the config file.
 	if(configFile.IsEmpty())
 		return;
 

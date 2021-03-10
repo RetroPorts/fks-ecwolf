@@ -506,7 +506,11 @@ void SelectGame(TArray<FString> &wadfiles, const char* iwad, const char* datawad
 	}
 	while(split != 0);
 
-	LookForGameData(datawadRes, basefiles, "/usr/local/share/games/wolf3d");
+#ifdef __linux__
+  std::string home = getenv("HOME");
+  home += "/.ecwolf";
+  LookForGameData(datawadRes, basefiles, home);
+#endif
 
 	// Look for a steam install. (Basically from ZDoom)
 	{
