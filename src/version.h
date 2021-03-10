@@ -1,8 +1,6 @@
 #ifndef _VERSION_H_
 #define _VERSION_H_
 
-#include "svnrevision.h"
-
 #define GAMENAME "ECWolf"
 #define GAMESIG "ECWOLF"
 #define BINNAME "ecwolf"
@@ -16,6 +14,7 @@
 #define DOTVERSIONSTR DOTVERSIONSTR_NOREV " (r" SVN_REVISION_STRING ")"
 #define SAVEPRODVER 0x00100300 // 0xMMMmmmrr in hex
 
+#define DOTVERSIONSTR "1.3.0"
 // Windows RC files have weird syntax so we need an unquoted version
 #define RCGAMENAME ECWolf
 

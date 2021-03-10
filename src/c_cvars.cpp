@@ -161,8 +161,8 @@ void ReadConfig(void)
 	SoundVolume = config.GetSetting("DigitizedVolume")->GetInteger();
 	vid_fullscreen = config.GetSetting("Vid_FullScreen")->GetInteger() != 0;
 	vid_aspect = static_cast<Aspect>(config.GetSetting("Vid_Aspect")->GetInteger());
-	screenWidth = config.GetSetting("ScreenWidth")->GetInteger();
-	screenHeight = config.GetSetting("ScreenHeight")->GetInteger();
+	//screenWidth = config.GetSetting("ScreenWidth")->GetInteger();
+	//screenHeight = config.GetSetting("ScreenHeight")->GetInteger();
 	quitonescape = config.GetSetting("QuitOnEscape")->GetInteger() != 0;
 	movebob = config.GetSetting("MoveBob")->GetInteger();
 	screenGamma = static_cast<float>(config.GetSetting("Gamma")->GetFloat());

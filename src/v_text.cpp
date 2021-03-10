@@ -151,14 +151,14 @@ void DCanvas::DrawTextV(FFont *font, int normalcolor, int x, int y, const char *
 		// We don't handle these. :(
 		case DTA_DestWidth:
 		case DTA_DestHeight:
-			*(DWORD *)tags = TAG_IGNORE;
-			data = va_arg (tags, DWORD);
+			//*(DWORD *)tags = TAG_IGNORE;
+			//data = va_arg (tags, DWORD);
 			break;
 
 		// Translation is specified explicitly by the text.
 		case DTA_Translation:
-			*(DWORD *)tags = TAG_IGNORE;
-			ptrval = va_arg (tags, void*);
+			//*(DWORD *)tags = TAG_IGNORE;
+			//ptrval = va_arg (tags, void*);
 			break;
 
 		case DTA_CleanNoMove_1:
@@ -213,7 +213,7 @@ void DCanvas::DrawTextV(FFont *font, int normalcolor, int x, int y, const char *
 	va_end(tags);
 
 	height *= scaley;
-		
+
 	while ((const char *)ch - string < maxstrlen)
 	{
 		c = *ch++;
@@ -229,7 +229,7 @@ void DCanvas::DrawTextV(FFont *font, int normalcolor, int x, int y, const char *
 			}
 			continue;
 		}
-		
+
 		if (c == '\n')
 		{
 			cx = x;
@@ -288,7 +288,7 @@ int FFont::StringWidth (const BYTE *string) const
 {
 	int w = 0;
 	int maxw = 0;
-		
+
 	while (*string)
 	{
 		if (*string == TEXTCOLOR_ESCAPE)
@@ -319,7 +319,7 @@ int FFont::StringWidth (const BYTE *string) const
 			w += GetCharWidth (*string++) + GlobalKerning;
 		}
 	}
-				
+
 	return MAX (maxw, w);
 }
 
@@ -377,7 +377,7 @@ FBrokenLines *V_BreakLines (FFont *font, int maxwidth, const BYTE *string)
 			continue;
 		}
 
-		if (isspace(c)) 
+		if (isspace(c))
 		{
 			if (!lastWasSpace)
 			{

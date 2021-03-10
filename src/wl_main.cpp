@@ -722,6 +722,7 @@ static void PG13 (void)
 	BYTE color = ColorMatcher.Pick(RPART(gameinfo.AdvisoryColor), GPART(gameinfo.AdvisoryColor), BPART(gameinfo.AdvisoryColor));
 
 	VWB_Clear(color, 0, 0, screenWidth, screenHeight);
+
 	FTexture *tex = TexMan(gameinfo.AdvisoryPic);
 	if(tex->GetScaledWidth() == 320)
 		VWB_DrawGraphic(tex, 0, 100-tex->GetScaledHeight()/2);

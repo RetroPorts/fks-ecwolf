@@ -270,7 +270,7 @@ static void processEvent(SDL_Event *event)
 		// exit if the window is closed
 		case SDL_QUIT:
 			Quit(NULL);
-
+      break;
 		// check for keypresses
 		case SDL_KEYDOWN:
 		{
@@ -318,19 +318,16 @@ static void processEvent(SDL_Event *event)
 			else if(LastScan == SCANCODE_UNMASK(SDLK_RSHIFT)) LastScan = SCANCODE_UNMASK(SDLK_LSHIFT);
 			else if(LastScan == SCANCODE_UNMASK(SDLK_RALT)) LastScan = SCANCODE_UNMASK(SDLK_LALT);
 			else if(LastScan == SCANCODE_UNMASK(SDLK_RCTRL)) LastScan = SCANCODE_UNMASK(SDLK_LCTRL);
-			else
-			{
-				if((mod & KMOD_NUM) == 0)
-				{
-					switch(LastScan)
-					{
-						case SCANCODE_UNMASK(SDLK_KP_2): LastScan = SCANCODE_UNMASK(SDLK_DOWN); break;
-						case SCANCODE_UNMASK(SDLK_KP_4): LastScan = SCANCODE_UNMASK(SDLK_LEFT); break;
-						case SCANCODE_UNMASK(SDLK_KP_6): LastScan = SCANCODE_UNMASK(SDLK_RIGHT); break;
-						case SCANCODE_UNMASK(SDLK_KP_8): LastScan = SCANCODE_UNMASK(SDLK_UP); break;
-					}
-				}
-			}
+
+      else if(LastScan == SCANCODE_UNMASK(SDLK_a)) LastScan = SCANCODE_UNMASK(SDLK_LCTRL);
+      else if(LastScan == SCANCODE_UNMASK(SDLK_b)) LastScan = SCANCODE_UNMASK(SDLK_SPACE);
+
+      else if(LastScan == SCANCODE_UNMASK(SDLK_u)) LastScan = SCANCODE_UNMASK(SDLK_UP);
+      else if(LastScan == SCANCODE_UNMASK(SDLK_d)) LastScan = SCANCODE_UNMASK(SDLK_DOWN);
+      else if(LastScan == SCANCODE_UNMASK(SDLK_r)) LastScan = SCANCODE_UNMASK(SDLK_RIGHT);
+      else if(LastScan == SCANCODE_UNMASK(SDLK_l)) LastScan = SCANCODE_UNMASK(SDLK_LEFT);
+      else if(LastScan == SCANCODE_UNMASK(SDLK_s)) LastScan = SCANCODE_UNMASK(SDLK_RETURN);
+      else if(LastScan == SCANCODE_UNMASK(SDLK_k)) LastScan = SCANCODE_UNMASK(SDLK_ESCAPE);
 
 			int sym = LastScan;
 			if(sym >= 'a' && sym <= 'z')
@@ -363,19 +360,14 @@ static void processEvent(SDL_Event *event)
 			else if(key == SDLK_RSHIFT) key = SDLK_LSHIFT;
 			else if(key == SDLK_RALT) key = SDLK_LALT;
 			else if(key == SDLK_RCTRL) key = SDLK_LCTRL;
-			else
-			{
-				if((SDL_GetModState() & KMOD_NUM) == 0)
-				{
-					switch(key)
-					{
-						case SDLK_KP_2: key = SDLK_DOWN; break;
-						case SDLK_KP_4: key = SDLK_LEFT; break;
-						case SDLK_KP_6: key = SDLK_RIGHT; break;
-						case SDLK_KP_8: key = SDLK_UP; break;
-					}
-				}
-			}
+      else if(key == SDLK_u) key = SDLK_UP;
+      else if(key == SDLK_d) key = SDLK_DOWN;
+      else if(key == SDLK_r) key = SDLK_RIGHT;
+      else if(key == SDLK_l) key = SDLK_LEFT;
+      else if(key == SDLK_s) key = SDLK_RETURN;
+      else if(key == SDLK_k) key = SDLK_ESCAPE;
+      else if(key == SDLK_a) key = SDLK_LCTRL;
+      else if(key == SDLK_b) key = SDLK_SPACE;
 
 			if(SCANCODE_UNMASK(key)<SDLK_LAST)
 				Keyboard[SCANCODE_UNMASK(key)] = 0;

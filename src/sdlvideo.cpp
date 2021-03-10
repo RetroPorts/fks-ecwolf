@@ -16,6 +16,7 @@
 #include "thingdef/thingdef.h"
 
 #include <SDL.h>
+#include <cassert>
 
 IVideo *Video = NULL;
 
@@ -130,7 +131,7 @@ bool V_DoModeSetup (int width, int height, int bits)
 		if (cx1 < cx2)
 		{
 			// Special case in which we don't need to scale down.
-			CleanXfac_1 = 
+			CleanXfac_1 =
 			CleanYfac_1 = cx1;
 		}
 		else
@@ -162,7 +163,7 @@ bool V_DoModeSetup (int width, int height, int bits)
 
 	//R_OldBlend = ~0;
 	//Renderer->OnModeSet();
-	
+
 	//M_RefreshModesList ();
 
 	return true;
@@ -272,13 +273,14 @@ private:
 	int FlashAmount;
 	float Gamma;
 	bool UpdatePending;
-	
+
 	SDL_Surface *Screen;
-	
+  SDL_Surface *HwScreen;
+
 	bool NeedPalUpdate;
 	bool NeedGammaUpdate;
 	bool NotPaletted;
-	
+
 	void UpdateColors ();
 
 	SDLFB () {}
@@ -309,7 +311,7 @@ extern IVideo *Video;
 
 // PUBLIC DATA DEFINITIONS -------------------------------------------------
 
-#define vid_displaybits 8
+#define vid_displaybits 32
 //CVAR (Int, vid_displaybits, 8, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 
 #define rgamma 1.f
@@ -411,7 +413,7 @@ bool SDLVideo::NextMode (int *width, int *height, bool *letterbox)
 {
 	if (IteratorBits != 8)
 		return false;
-	
+
 	if (!IteratorFS)
 	{
 		if ((unsigned)IteratorMode < sizeof(WinModes)/sizeof(WinModes[0]))
@@ -438,9 +440,9 @@ bool SDLVideo::NextMode (int *width, int *height, bool *letterbox)
 
 DFrameBuffer *SDLVideo::CreateFrameBuffer (int width, int height, bool fullscreen, DFrameBuffer *old)
 {
-	static int retry = 0;
+  static int retry = 0;
 	static int owidth, oheight;
-	
+
 	PalEntry flashColor;
 	int flashAmount;
 
@@ -451,7 +453,7 @@ DFrameBuffer *SDLVideo::CreateFrameBuffer (int width, int height, bool fullscree
 			fb->Height == height)
 		{
 			bool fsnow = (fb->Screen->flags & SDL_FULLSCREEN) != 0;
-	
+
 			if (fsnow == fullscreen)
 				return old;
 			if (fsnow != fullscreen)
@@ -470,10 +472,10 @@ DFrameBuffer *SDLVideo::CreateFrameBuffer (int width, int height, bool fullscree
 		flashColor = 0;
 		flashAmount = 0;
 	}
-	
+
 	SDLFB *fb = new SDLFB (width, height, fullscreen);
 	retry = 0;
-	
+
 	// If we could not create the framebuffer, try again with slightly
 	// different parameters in this order:
 	// 1. Try with the closest size
@@ -526,45 +528,38 @@ void SDLVideo::SetWindowedScale (float scale)
 // FrameBuffer implementation -----------------------------------------------
 
 extern bool usedoublebuffering;
-SDLFB::SDLFB (int width, int height, bool fullscreen)
-	: DFrameBuffer (width, height)
+SDLFB::SDLFB (int width, int height, bool fullscreen) : DFrameBuffer (width, height)
 {
 	int i;
-	
+
 	NeedPalUpdate = false;
 	NeedGammaUpdate = false;
 	UpdatePending = false;
 	NotPaletted = false;
 	FlashAmount = 0;
-	
-	Screen = SDL_SetVideoMode (width, height, vid_displaybits,
-		SDL_HWSURFACE|SDL_HWPALETTE|
-#ifdef SDL_TRIPLEBUF
-        SDL_TRIPLEBUF
-#else
-		SDL_DOUBLEBUF
-#endif
-		|SDL_ANYFORMAT|
-		(fullscreen ? SDL_FULLSCREEN : 0));
 
-	if (Screen == NULL)
+	HwScreen = SDL_SetVideoMode (240, 240, vid_displaybits, SDL_HWSURFACE|SDL_DOUBLEBUF);
+
+	if (HwScreen == NULL)
 		return;
 
-	if((Screen->flags & SDL_DOUBLEBUF) != SDL_DOUBLEBUF)
+	if((HwScreen->flags & SDL_DOUBLEBUF) != SDL_DOUBLEBUF)
 		usedoublebuffering = false;
+
+  Screen = SDL_CreateRGBSurface(SDL_SWSURFACE, 320, 240, vid_displaybits, HwScreen->format->Rmask, HwScreen->format->Gmask, HwScreen->format->Bmask, HwScreen->format->Amask);
+
+  if (Screen == NULL)
+    return;
+
+  SDL_SetAlpha(Screen, 0, 0);
 
 	for (i = 0; i < 256; i++)
 	{
 		GammaTable[0][i] = GammaTable[1][i] = GammaTable[2][i] = i;
 	}
-	if (Screen->format->palette == NULL)
-	{
-		NotPaletted = true;
-		GPfx.SetFormat (Screen->format->BitsPerPixel,
-			Screen->format->Rmask,
-			Screen->format->Gmask,
-			Screen->format->Bmask);
-	}
+
+	NotPaletted = true;
+  GPfx.SetFormat (Screen->format->BitsPerPixel, Screen->format->Rmask, Screen->format->Gmask, Screen->format->Bmask);
 	memcpy (SourcePalette, GPalette.BaseColors, sizeof(PalEntry)*256);
 	UpdateColors ();
 }
@@ -606,6 +601,178 @@ void SDLFB::Unlock ()
 	}
 }
 
+
+// Support math
+#define Half(A) (((A) >> 1) & 0x7F7F7F7F)
+#define Quarter(A) (((A) >> 2) & 0x3F3F3F3F)
+// Error correction expressions to piece back the lower bits together
+#define RestHalf(A) ((A) & 0x01010101)
+#define RestQuarter(A) ((A) & 0x03030303)
+
+// Error correction expressions for quarters of pixels
+#define Corr1_3(A, B)     Quarter(RestQuarter(A) + (RestHalf(B) << 1) + RestQuarter(B))
+#define Corr3_1(A, B)     Quarter((RestHalf(A) << 1) + RestQuarter(A) + RestQuarter(B))
+
+// Error correction expressions for halves
+#define Corr1_1(A, B)     ((A) & (B) & 0x01010101)
+
+// Quarters
+#define Weight1_3(A, B)   (Quarter(A) + Half(B) + Quarter(B) + Corr1_3(A, B))
+#define Weight3_1(A, B)   (Half(A) + Quarter(A) + Quarter(B) + Corr3_1(A, B))
+
+// Halves
+#define Weight1_1(A, B)   (Half(A) + Half(B) + Corr1_1(A, B))
+
+#define RES_HW_SCREEN_HORIZONTAL 240
+#define RES_HW_SCREEN_VERTICAL 240
+
+void downscale_320x240_to_240x240_bilinearish(SDL_Surface *src_surface, SDL_Surface *dst_surface)
+{
+  int w1 = src_surface->w;
+  int h1 = src_surface->h;
+  int w2 = dst_surface->w;
+  int h2 = dst_surface->h;
+
+  if (w1 != 320) {
+    printf("src_surface->w (%d) != 320\n", src_surface->w);
+    return;
+  }
+
+  //printf("src = %dx%d\n", w1, h1);
+  int y_ratio = (int)((h1 << 16) / h2);
+  int y_padding = (RES_HW_SCREEN_VERTICAL - h2) / 2;
+  int y1;
+  uint32_t *src_screen = (uint32_t *)src_surface->pixels;
+  uint32_t *dst_screen = (uint32_t *)dst_surface->pixels;
+
+  /* Interpolation */
+  for (int i = 0; i < h2; i++)
+  {
+    if (i >= RES_HW_SCREEN_VERTICAL) {
+      continue;
+    }
+    uint32_t* t = (uint32_t*)(dst_screen +
+      (i + y_padding)*((w2 > RES_HW_SCREEN_HORIZONTAL) ? RES_HW_SCREEN_HORIZONTAL : w2));
+
+    // ------ current and next y value ------
+    y1 = ((i*y_ratio) >> 16);
+    uint32_t* p = (uint32_t*)(src_screen + (y1*w1));
+
+    for (int j = 0; j < 80; j++)
+    {
+      /* Horizontaly:
+       * Before(4):
+       * (a)(b)(c)(d)
+       * After(3):
+       * (aaab)(bc)(cddd)
+       */
+      uint32_t _a = *(p);
+      uint32_t _b = *(p + 1);
+      uint32_t _c = *(p + 2);
+      uint32_t _d = *(p + 3);
+      *(t) = Weight3_1(_a, _b);
+      *(t + 1) = Weight1_1(_b, _c);
+      *(t + 2) = Weight1_3(_c, _d);
+
+      // ------ next dst pixel ------
+      t += 3;
+      p += 4;
+    }
+  }
+}
+
+void downscale_320x240_to_240x180_bilinearish(SDL_Surface *src_surface, SDL_Surface *dst_surface)
+{
+  if (src_surface->w != 320)
+  {
+    printf("src_surface->w (%d) != 320 \n", src_surface->w);
+    return;
+  }
+  if (src_surface->h != 240)
+  {
+    printf("src_surface->h (%d) != 240 \n", src_surface->h);
+    return;
+  }
+
+  /// Compute padding for centering when out of bounds
+  int y_padding = (RES_HW_SCREEN_VERTICAL - 180) / 2;
+
+  uint32_t *Src32 = (uint32_t *)src_surface->pixels;
+  uint32_t *Dst32 = (uint32_t *)dst_surface->pixels + y_padding * RES_HW_SCREEN_HORIZONTAL;
+
+  // There are 80 blocks of 2 pixels horizontally, and 48 of 3 horizontally.
+  // Horizontally: 320=80*4 240=80*3
+  // Vertically: 240=60*4 180=60*3
+  // Each block of 4*4 becomes 3*3
+  uint32_t BlockX, BlockY;
+  uint32_t *BlockSrc;
+  uint32_t *BlockDst;
+  for (BlockY = 0; BlockY < 60; BlockY++)
+  {
+    BlockSrc = Src32 + BlockY * 320 * 4;
+    BlockDst = Dst32 + BlockY * 240 * 3;
+    for (BlockX = 0; BlockX < 80; BlockX++)
+    {
+      /* Horizontaly:
+       * Before(4):
+       * (a)(b)(c)(d)
+       * After(3):
+       * (aaab)(bc)(cddd)
+       */
+
+       /* Verticaly:
+        * Before(2):
+        * (1)(2)(3)(4)
+        * After(4):
+        * (1112)(23)(3444)
+        */
+
+        // -- Data --
+      uint32_t _a1 = *(BlockSrc);
+      uint32_t _b1 = *(BlockSrc + 1);
+      uint32_t _c1 = *(BlockSrc + 2);
+      uint32_t _d1 = *(BlockSrc + 3);
+      uint32_t _a2 = *(BlockSrc + 320 * 1);
+      uint32_t _b2 = *(BlockSrc + 320 * 1 + 1);
+      uint32_t _c2 = *(BlockSrc + 320 * 1 + 2);
+      uint32_t _d2 = *(BlockSrc + 320 * 1 + 3);
+      uint32_t _a3 = *(BlockSrc + 320 * 2);
+      uint32_t _b3 = *(BlockSrc + 320 * 2 + 1);
+      uint32_t _c3 = *(BlockSrc + 320 * 2 + 2);
+      uint32_t _d3 = *(BlockSrc + 320 * 2 + 3);
+      uint32_t _a4 = *(BlockSrc + 320 * 3);
+      uint32_t _b4 = *(BlockSrc + 320 * 3 + 1);
+      uint32_t _c4 = *(BlockSrc + 320 * 3 + 2);
+      uint32_t _d4 = *(BlockSrc + 320 * 3 + 3);
+
+      uint32_t _a2a2a2b2 = Weight3_1(_a2, _b2);
+      uint32_t _a3a3a3b3 = Weight3_1(_a3, _b3);
+      uint32_t _b2c2 = Weight1_1(_b2, _c2);
+      uint32_t _b3c3 = Weight1_1(_b3, _c3);
+      uint32_t _c2d2d2d2 = Weight1_3(_c2, _d2);
+      uint32_t _c3d3d3d3 = Weight1_3(_c3, _d3);
+
+      // -- Line 1 --
+      *(BlockDst) = Weight3_1(Weight3_1(_a1, _b1), _a2a2a2b2);
+      *(BlockDst + 1) = Weight3_1(Weight1_1(_b1, _c1), _b2c2);
+      *(BlockDst + 2) = Weight3_1(Weight1_3(_c1, _d1), _c2d2d2d2);
+
+      // -- Line 2 --
+      *(BlockDst + 240 * 1) = Weight1_1(_a2a2a2b2, _a3a3a3b3);
+      *(BlockDst + 240 * 1 + 1) = Weight1_1(_b2c2, _b3c3);
+      *(BlockDst + 240 * 1 + 2) = Weight1_1(_c2d2d2d2, _c3d3d3d3);
+
+      // -- Line 3 --
+      *(BlockDst + 240 * 2) = Weight1_3(_a3a3a3b3, Weight3_1(_a4, _b4));
+      *(BlockDst + 240 * 2 + 1) = Weight1_3(_b3c3, Weight1_1(_b4, _c4));
+      *(BlockDst + 240 * 2 + 2) = Weight1_3(_c3d3d3d3, Weight1_3(_c4, _d4));
+
+      BlockSrc += 4;
+      BlockDst += 3;
+    }
+  }
+}
+
 void SDLFB::Update ()
 {
 	if (LockCount != 1)
@@ -620,15 +787,6 @@ void SDLFB::Update ()
 
 	DrawRateStuff ();
 
-#if 0
-#ifndef __APPLE__
-	if(vid_maxfps && !cl_capfps)
-	{
-		SEMAPHORE_WAIT(FPSLimitSemaphore)
-	}
-#endif
-#endif
-
 	Buffer = NULL;
 	LockCount = 0;
 	UpdatePending = false;
@@ -640,39 +798,17 @@ void SDLFB::Update ()
 	if (SDL_LockSurface (Screen) == -1)
 		return;
 
-	if (NotPaletted)
-	{
-		GPfx.Convert (MemBuffer, Pitch,
-			Screen->pixels, Screen->pitch, Width, Height,
-			FRACUNIT, FRACUNIT, 0, 0);
-	}
-	else
-	{
-		if (Screen->pitch == Pitch)
-		{
-			memcpy (Screen->pixels, MemBuffer, Width*Height);
-		}
-		else
-		{
-			for (int y = 0; y < Height; ++y)
-			{
-				memcpy ((BYTE *)Screen->pixels+y*Screen->pitch, MemBuffer+y*Pitch, Width);
-			}
-		}
-	}
-	
+  GPfx.Convert(MemBuffer, Pitch, Screen->pixels, Screen->pitch, Width, Height, FRACUNIT, FRACUNIT, 0, 0);
 	SDL_UnlockSurface (Screen);
 
-#if 0
-	if (cursorSurface != NULL && GUICapture)
-	{
-		// SDL requires us to draw a surface to get true color cursors.
-		SDL_BlitSurface(cursorSurface, NULL, Screen, &cursorBlit);
-	}
-#endif
+  downscale_320x240_to_240x180_bilinearish(Screen, HwScreen);
+
+  //SDL_FillRect(HwScreen, nullptr, 0x000);
+  //SDL_Rect crop = { 0, 0, 240, 240 };
+  //SDL_BlitSurface(Screen, &crop, HwScreen, nullptr);
 
 	//SDLFlipCycles.Clock();
-	SDL_Flip (Screen);
+	SDL_Flip (HwScreen);
 	//SDLFlipCycles.Unclock();
 
 	//BlitCycles.Unclock();
@@ -686,7 +822,7 @@ void SDLFB::Update ()
 		CalcGamma ((Windowed || bgamma == 0.f) ? Gamma : (Gamma * bgamma), GammaTable[2]);
 		NeedPalUpdate = true;
 	}
-	
+
 	if (NeedPalUpdate)
 	{
 		NeedPalUpdate = false;
@@ -696,42 +832,21 @@ void SDLFB::Update ()
 
 void SDLFB::UpdateColors ()
 {
-	if (NotPaletted)
+	PalEntry palette[256];
+
+	for (int i = 0; i < 256; ++i)
 	{
-		PalEntry palette[256];
-		
-		for (int i = 0; i < 256; ++i)
-		{
-			palette[i].r = GammaTable[0][SourcePalette[i].r];
-			palette[i].g = GammaTable[1][SourcePalette[i].g];
-			palette[i].b = GammaTable[2][SourcePalette[i].b];
-		}
-		if (FlashAmount)
-		{
-			DoBlending (palette, palette,
-				256, GammaTable[0][Flash.r], GammaTable[1][Flash.g], GammaTable[2][Flash.b],
-				FlashAmount);
-		}
-		GPfx.SetPalette (palette);
+		palette[i].r = GammaTable[0][SourcePalette[i].r];
+		palette[i].g = GammaTable[1][SourcePalette[i].g];
+		palette[i].b = GammaTable[2][SourcePalette[i].b];
 	}
-	else
+	if (FlashAmount)
 	{
-		SDL_Color colors[256];
-		
-		for (int i = 0; i < 256; ++i)
-		{
-			colors[i].r = GammaTable[0][SourcePalette[i].r];
-			colors[i].g = GammaTable[1][SourcePalette[i].g];
-			colors[i].b = GammaTable[2][SourcePalette[i].b];
-		}
-		if (FlashAmount)
-		{
-			DoBlending ((PalEntry *)colors, (PalEntry *)colors,
-				256, GammaTable[2][Flash.b], GammaTable[1][Flash.g], GammaTable[0][Flash.r],
-				FlashAmount);
-		}
-		SDL_SetPalette (Screen, SDL_LOGPAL|SDL_PHYSPAL, colors, 0, 256);
+		DoBlending (palette, palette,
+			256, GammaTable[0][Flash.r], GammaTable[1][Flash.g], GammaTable[2][Flash.b],
+			FlashAmount);
 	}
+	GPfx.SetPalette(palette);
 }
 
 PalEntry *SDLFB::GetPalette ()
@@ -779,13 +894,3 @@ bool SDLFB::IsFullscreen ()
 {
 	return (Screen->flags & SDL_FULLSCREEN) != 0;
 }
-
-#if 0
-ADD_STAT (blit)
-{
-	FString out;
-	out.Format ("blit=%04.1f ms  flip=%04.1f ms",
-		BlitCycles.Time() * 1e-3, SDLFlipCycles.TimeMS());
-	return out;
-}
-#endif

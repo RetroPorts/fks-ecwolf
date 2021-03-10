@@ -42,7 +42,7 @@
 #else
 #include <dirent.h>
 #ifndef __sun
-#include <fts.h>
+//#include <fts.h>
 #endif
 #endif
 #include <stdio.h>
@@ -56,6 +56,8 @@
 #include "resourcefile.h"
 #include "zstring.h"
 #include "doomerrors.h"
+
+#define __sun
 
 
 
@@ -99,7 +101,7 @@ public:
 
 //==========================================================================
 //
-// 
+//
 //
 //==========================================================================
 
@@ -153,7 +155,7 @@ int FDirectory::AddDirectory(const char *dirpath)
 
 	dirmatch = dirpath;
 	dirmatch += '*';
-	
+
 	if ((handle = _findfirst(dirmatch, &fileinfo)) == -1)
 	{
 		Printf("Could not scan '%s': %s\n", dirpath, strerror(errno));
@@ -374,4 +376,3 @@ FResourceFile *CheckDir(const char *filename, FileReader *file, bool quiet)
 	delete rf;
 	return NULL;
 }
-
