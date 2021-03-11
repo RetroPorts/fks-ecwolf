@@ -1,7 +1,7 @@
 [Desktop Entry]
-Name=ECWolf
-Comment=ECWolf
-Exec=ecwolf
+Name=Wolfenstein 3D
+Comment=Wolfenstein 3D
+Exec=ecwolf --data WL6
 Terminal=false
 Type=Application
 StartupNotify=true

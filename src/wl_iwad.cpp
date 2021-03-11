@@ -507,9 +507,11 @@ void SelectGame(TArray<FString> &wadfiles, const char* iwad, const char* datawad
 	while(split != 0);
 
 #ifdef __linux__
-  std::string home = getenv("HOME");
-  home += "/.ecwolf";
-  LookForGameData(datawadRes, basefiles, home);
+  char* home = getenv("HOME");
+  char buffer[100];
+  strcpy(buffer, home);
+  strcat(buffer, "/.ecwolf");
+  LookForGameData(datawadRes, basefiles, buffer);
 #endif
 
 	// Look for a steam install. (Basically from ZDoom)
