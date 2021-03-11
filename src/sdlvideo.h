@@ -13,8 +13,7 @@ class SDLVideo : public IVideo
 
 	DFrameBuffer *CreateFrameBuffer (int width, int height, bool fs, DFrameBuffer *old);
 
-	void StartModeIterator (int bits, bool fs);
-	bool NextMode (int *width, int *height, bool *letterbox);
+  void nextScaler();
 
 private:
 	int IteratorMode;
@@ -22,6 +21,6 @@ private:
 	bool IteratorFS;
 };
 
-extern IVideo *Video;
+extern SDLVideo *Video;
 
 #endif

@@ -25,6 +25,8 @@
 #include "id_vl.h"
 #include "id_vh.h"
 
+#include "sdlvideo.h"
+
 
 #if SDL_VERSION_ATLEAST(2,0,0)
 // TODO: Remove this dependency!
@@ -326,8 +328,12 @@ static void processEvent(SDL_Event *event)
         case SCANCODE_UNMASK(SDLK_l): LastScan = SCANCODE_UNMASK(SDLK_LEFT); break;
         case SCANCODE_UNMASK(SDLK_s): LastScan = SCANCODE_UNMASK(SDLK_RETURN); break;
         case SCANCODE_UNMASK(SDLK_k): LastScan = SCANCODE_UNMASK(SDLK_ESCAPE); break;
-        case SCANCODE_UNMASK(SDLK_a): LastScan = SCANCODE_UNMASK(SDLK_LCTRL); break;
-        case SCANCODE_UNMASK(SDLK_b): LastScan = SCANCODE_UNMASK(SDLK_SPACE); break;
+        case SCANCODE_UNMASK(SDLK_a): LastScan = SCANCODE_UNMASK(SDLK_SPACE); break;
+        case SCANCODE_UNMASK(SDLK_b): LastScan = SCANCODE_UNMASK(SDLK_LCTRL); break;
+
+        case SCANCODE_UNMASK(SDLK_v): LastScan = sc_Minus; break;
+        case SCANCODE_UNMASK(SDLK_o): LastScan = sc_Equals; break;
+
       }
 
 			int sym = LastScan;
@@ -370,8 +376,16 @@ static void processEvent(SDL_Event *event)
         case SDLK_l: key = SDLK_LEFT; break;
         case SDLK_s: key = SDLK_RETURN; break;
         case SDLK_k: key = SDLK_ESCAPE; break;
-        case SDLK_a: key = SDLK_LCTRL; break;
-        case SDLK_b: key = SDLK_SPACE; break;
+        case SDLK_a: key = SDLK_SPACE; break;
+        case SDLK_b: key = SDLK_LCTRL; break;
+
+        case SDLK_v: key = sc_Minus; break;
+        case SDLK_o: key = sc_Equals; break;
+      }
+
+      if (key == SDLK_h)
+      {
+        Video->nextScaler();
       }
 
 			if(SCANCODE_UNMASK(key)<SDLK_LAST)

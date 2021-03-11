@@ -243,16 +243,6 @@ MENU_LISTENER(SetResolution)
 {
 	MenuFadeOut();
 
-	{
-		int width, height;
-		bool lb;
-		Video->StartModeIterator(DisplayBits, vid_fullscreen);
-		for(int i = 0;i <= which;++i)
-			Video->NextMode(&width, &height, &lb);
-		screenWidth = width;
-		screenHeight = height;
-	}
-
 	r_ratio = static_cast<Aspect>(CheckRatio(screenWidth, screenHeight));
 	VH_Startup(); // Recalculate fizzlefade stuff.
 	screen->Unlock();
@@ -270,12 +260,10 @@ MENU_LISTENER(EnterResolutionSelection)
 	FString resolution;
 
 	{
-		int width, height;
+		int width = 320, height = 240;
 		bool lb;
-		Video->StartModeIterator(DisplayBits, vid_fullscreen);
-		while(Video->NextMode(&width, &height, &lb))
 		{
-			resolution.Format("%dx%d", width, height);
+			resolution.Format("%dx%d", 320, 240);
 			MenuItem *item = new MenuItem(resolution, SetResolution);
 			resolutionMenu.addItem(item);
 

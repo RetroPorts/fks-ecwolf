@@ -18,9 +18,15 @@
 #include <SDL.h>
 #include <cassert>
 
-IVideo *Video = NULL;
+SDLVideo *Video = NULL;
+
+enum Scaler { ASPECT, STRETCHED, NATIVE };
+
+bool scalerChanged = false;
+Scaler scaler = Scaler::ASPECT;
 
 extern float screenGamma;
+extern unsigned screenWidth, screenHeight;
 
 DFrameBuffer *I_SetMode (int &width, int &height, DFrameBuffer *old)
 {
@@ -50,52 +56,12 @@ DFrameBuffer *I_SetMode (int &width, int &height, DFrameBuffer *old)
 
 bool I_CheckResolution (int width, int height, int bits)
 {
-	int twidth, theight;
-
-	Video->StartModeIterator (bits, screen ? screen->IsFullscreen() : vid_fullscreen);
-	while (Video->NextMode (&twidth, &theight, NULL))
-	{
-		if (width == twidth && height == theight)
-			return true;
-	}
-	return false;
+  return true;
 }
 
 void I_ClosestResolution (int *width, int *height, int bits)
 {
-	int twidth, theight;
-	int cwidth = 0, cheight = 0;
-	int iteration;
-	DWORD closest = 0xFFFFFFFFu;
-
-	for (iteration = 0; iteration < 2; iteration++)
-	{
-		Video->StartModeIterator (bits, screen ? screen->IsFullscreen() : vid_fullscreen);
-		while (Video->NextMode (&twidth, &theight, NULL))
-		{
-			if (twidth == *width && theight == *height)
-				return;
-
-			if (iteration == 0 && (twidth < *width || theight < *height))
-				continue;
-
-			DWORD dist = (twidth - *width) * (twidth - *width)
-				+ (theight - *height) * (theight - *height);
-
-			if (dist < closest)
-			{
-				closest = dist;
-				cwidth = twidth;
-				cheight = theight;
-			}
-		}
-		if (closest != 0xFFFFFFFFu)
-		{
-			*width = cwidth;
-			*height = cheight;
-			return;
-		}
-	}
+  return;
 }
 
 //
@@ -298,7 +264,7 @@ struct MiniModeInfo
 
 // EXTERNAL DATA DECLARATIONS ----------------------------------------------
 
-extern IVideo *Video;
+extern SDLVideo *Video;
 //extern SDL_Surface *cursorSurface;
 //extern SDL_Rect cursorBlit;
 //extern bool GUICapture;
@@ -343,50 +309,6 @@ CUSTOM_CVAR (Float, bgamma, 1.f, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 
 // PRIVATE DATA DEFINITIONS ------------------------------------------------
 
-// Dummy screen sizes to pass when windowed
-static MiniModeInfo WinModes[] =
-{
-	{ 320, 200 },
-	{ 320, 240 },
-	{ 400, 225 },	// 16:9
-	{ 400, 300 },
-	{ 480, 270 },	// 16:9
-	{ 480, 360 },
-	{ 512, 288 },	// 16:9
-	{ 512, 384 },
-	{ 640, 360 },	// 16:9
-	{ 640, 400 },
-	{ 640, 480 },
-	{ 720, 480 },	// 16:10
-	{ 720, 540 },
-	{ 800, 450 },	// 16:9
-	{ 800, 500 },	// 16:10
-	{ 800, 600 },
-	{ 848, 480 },	// 16:9
-	{ 960, 600 },	// 16:10
-	{ 960, 720 },
-	{ 1024, 576 },	// 16:9
-	{ 1024, 600 },	// 17:10
-	{ 1024, 640 },	// 16:10
-	{ 1024, 768 },
-	{ 1088, 612 },	// 16:9
-	{ 1152, 648 },	// 16:9
-	{ 1152, 720 },	// 16:10
-	{ 1152, 864 },
-	{ 1280, 720 },	// 16:9
-	{ 1280, 800 },	// 16:10
-	{ 1280, 960 },
-	{ 1360, 768 },	// 16:9
-	{ 1400, 787 },	// 16:9
-	{ 1400, 875 },	// 16:10
-	{ 1400, 1050 },
-	{ 1600, 900 },	// 16:9
-	{ 1600, 1000 },	// 16:10
-	{ 1600, 1200 },
-	{ 1920, 1080 },
-	{ 1920, 1200 },
-};
-
 //static cycle_t BlitCycles;
 //static cycle_t SDLFlipCycles;
 
@@ -400,42 +322,6 @@ SDLVideo::SDLVideo (int parm)
 
 SDLVideo::~SDLVideo ()
 {
-}
-
-void SDLVideo::StartModeIterator (int bits, bool fs)
-{
-	IteratorMode = 0;
-	IteratorBits = bits;
-	IteratorFS = fs;
-}
-
-bool SDLVideo::NextMode (int *width, int *height, bool *letterbox)
-{
-	if (IteratorBits != 8)
-		return false;
-
-	if (!IteratorFS)
-	{
-		if ((unsigned)IteratorMode < sizeof(WinModes)/sizeof(WinModes[0]))
-		{
-			*width = WinModes[IteratorMode].Width;
-			*height = WinModes[IteratorMode].Height;
-			++IteratorMode;
-			return true;
-		}
-	}
-	else
-	{
-		SDL_Rect **modes = SDL_ListModes (NULL, SDL_FULLSCREEN|SDL_HWSURFACE);
-		if (modes != NULL && modes[IteratorMode] != NULL)
-		{
-			*width = modes[IteratorMode]->w;
-			*height = modes[IteratorMode]->h;
-			++IteratorMode;
-			return true;
-		}
-	}
-	return false;
 }
 
 DFrameBuffer *SDLVideo::CreateFrameBuffer (int width, int height, bool fullscreen, DFrameBuffer *old)
@@ -523,6 +409,16 @@ DFrameBuffer *SDLVideo::CreateFrameBuffer (int width, int height, bool fullscree
 
 void SDLVideo::SetWindowedScale (float scale)
 {
+}
+
+void SDLVideo::nextScaler()
+{
+  if (scaler == Scaler::ASPECT)
+    scaler = Scaler::STRETCHED;
+  else
+    scaler = Scaler::ASPECT;
+
+  scalerChanged = true;
 }
 
 // FrameBuffer implementation -----------------------------------------------
@@ -801,7 +697,21 @@ void SDLFB::Update ()
   GPfx.Convert(MemBuffer, Pitch, Screen->pixels, Screen->pitch, Width, Height, FRACUNIT, FRACUNIT, 0, 0);
 	SDL_UnlockSurface (Screen);
 
-  downscale_320x240_to_240x180_bilinearish(Screen, HwScreen);
+  if (scaler == Scaler::ASPECT)
+  {
+    if (scalerChanged)
+      SDL_FillRect(HwScreen, nullptr, 0x000);
+
+    downscale_320x240_to_240x180_bilinearish(Screen, HwScreen);
+  }
+  else if (scaler == Scaler::STRETCHED)
+  {
+    downscale_320x240_to_240x240_bilinearish(Screen, HwScreen);
+
+  }
+
+
+  scalerChanged = false;
 
   //SDL_FillRect(HwScreen, nullptr, 0x000);
   //SDL_Rect crop = { 0, 0, 240, 240 };

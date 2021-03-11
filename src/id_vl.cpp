@@ -14,6 +14,8 @@
 #include "wl_main.h"
 #include "wl_play.h"
 
+#include "sdlvideo.h"
+
 
 // Uncomment the following line, if you get destination out of bounds
 // assertion errors and want to ignore them during debugging
