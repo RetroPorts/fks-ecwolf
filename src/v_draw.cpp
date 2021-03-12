@@ -756,6 +756,7 @@ bool DCanvas::ParseDrawTextureTags (FTexture *img, double x, double y, DWORD tag
 	return true;
 }
 
+//TODO FKS: here aspect ratio is computed
 void DCanvas::VirtualToRealCoords(double &x, double &y, double &w, double &h,
 	double vwidth, double vheight, bool vbottom, bool handleaspect) const
 {

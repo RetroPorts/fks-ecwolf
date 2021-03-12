@@ -131,6 +131,21 @@ else(APPLE)
 	set(PLATFORM_EXE_FLAGS "")
 endif(APPLE)
 
+add_definitions(-DPHYSFS_SUPPORTS_DEFAULT=0 -DPHYSFS_SUPPORTS_ZIP=1)
+
+set(EXTRA_FILES
+  ${EXTRA_FILES}
+  physfs/physfs.c
+  physfs/physfs_archiver_dir.c
+  physfs/physfs_archiver_unpacked.c
+  physfs/physfs_archiver_zip.c
+  physfs/physfs_byteorder.c
+  physfs/physfs_unicode.c
+  physfs/physfs_platform_windows.c
+  physfs/physfs_platform_unix.c
+  physfs/physfs_platform_posix.c
+)
+
 # Glob for the header files so project generation can include them
 file(GLOB HEADER_FILES
 	g_shared/*.h
@@ -140,6 +155,7 @@ file(GLOB HEADER_FILES
 	sfmt/*.h
 	textures/*.h
 	thingdef/*.h
+  physfs/*.h
 	*.h
 )
 

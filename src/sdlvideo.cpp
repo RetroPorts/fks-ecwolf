@@ -22,8 +22,13 @@ SDLVideo *Video = NULL;
 
 enum Scaler { ASPECT, STRETCHED, NATIVE };
 
+Scaler scaler = Scaler::NATIVE;
+unsigned screenWidth = scaler == Scaler::NATIVE ? 240 : 320;
+unsigned screenHeight = 240;
+
+
 bool scalerChanged = false;
-Scaler scaler = Scaler::ASPECT;
+bool shouldResize = false;
 
 extern float screenGamma;
 extern unsigned screenWidth, screenHeight;
@@ -64,6 +69,43 @@ void I_ClosestResolution (int *width, int *height, int bits)
   return;
 }
 
+void resize(int width, int height, int bits)
+{
+  int cx1, cx2;
+  
+  V_CalcCleanFacs(screenWidth, 200, width, height, &CleanXfac, &CleanYfac, &cx1, &cx2);
+
+  CleanWidth = width / CleanXfac;
+  CleanHeight = height / CleanYfac;
+  //assert(CleanWidth >= 320);
+  //assert(CleanHeight >= 200);
+
+  if (cx1 < cx2)
+  {
+    // Special case in which we don't need to scale down.
+    CleanXfac_1 =
+      CleanYfac_1 = cx1;
+  }
+  else
+  {
+    CleanXfac_1 = MAX(CleanXfac - 1, 1);
+    CleanYfac_1 = MAX(CleanYfac - 1, 1);
+    // On larger screens this is not enough so make sure it's at most 3/4 of the screen's width
+    while (CleanXfac_1 * 320 > screen->GetWidth() * 3 / 4 && CleanXfac_1 > 2)
+    {
+      CleanXfac_1--;
+      CleanYfac_1--;
+    }
+  }
+  CleanWidth_1 = width / CleanXfac_1;
+  CleanHeight_1 = height / CleanYfac_1;
+
+  DisplayWidth = width;
+  DisplayHeight = height;
+  DisplayBits = bits;
+}
+
+
 //
 // V_SetResolution
 //
@@ -85,12 +127,12 @@ bool V_DoModeSetup (int width, int height, int bits)
 	// if D3DFB is being used for the display.
 	//FFont::StaticPreloadFonts();
 
-	V_CalcCleanFacs(320, 200, width, height, &CleanXfac, &CleanYfac, &cx1, &cx2);
+	V_CalcCleanFacs(screenWidth, 200, width, height, &CleanXfac, &CleanYfac, &cx1, &cx2);
 
 	CleanWidth = width / CleanXfac;
 	CleanHeight = height / CleanYfac;
-	assert(CleanWidth >= 320);
-	assert(CleanHeight >= 200);
+	//assert(CleanWidth >= 320);
+	//assert(CleanHeight >= 200);
 
 	if (width < 800 || width >= 960)
 	{
@@ -136,8 +178,8 @@ bool V_DoModeSetup (int width, int height, int bits)
 }
 
 bool IVideo::SetResolution (int width, int height, int bits)
-{
-	int oldwidth, oldheight;
+{  
+  int oldwidth, oldheight;
 	int oldbits;
 
 	if (screen)
@@ -411,12 +453,25 @@ void SDLVideo::SetWindowedScale (float scale)
 {
 }
 
+SDLFB* framebuffer = nullptr;
+
 void SDLVideo::nextScaler()
 {
-  if (scaler == Scaler::ASPECT)
-    scaler = Scaler::STRETCHED;
-  else
+  return;
+  if (scaler == Scaler::NATIVE)
+  {
     scaler = Scaler::ASPECT;
+    shouldResize = true;
+  }
+  else if (scaler == Scaler::ASPECT)
+  {
+    scaler = Scaler::STRETCHED;
+  }
+  else
+  {
+    scaler = Scaler::NATIVE;
+    shouldResize = true;
+  }
 
   scalerChanged = true;
 }
@@ -427,6 +482,8 @@ extern bool usedoublebuffering;
 SDLFB::SDLFB (int width, int height, bool fullscreen) : DFrameBuffer (width, height)
 {
 	int i;
+
+  framebuffer = this;
 
 	NeedPalUpdate = false;
 	NeedGammaUpdate = false;
@@ -442,7 +499,7 @@ SDLFB::SDLFB (int width, int height, bool fullscreen) : DFrameBuffer (width, hei
 	if((HwScreen->flags & SDL_DOUBLEBUF) != SDL_DOUBLEBUF)
 		usedoublebuffering = false;
 
-  Screen = SDL_CreateRGBSurface(SDL_SWSURFACE, 320, 240, vid_displaybits, HwScreen->format->Rmask, HwScreen->format->Gmask, HwScreen->format->Bmask, HwScreen->format->Amask);
+  Screen = SDL_CreateRGBSurface(SDL_SWSURFACE, screenWidth, screenHeight, vid_displaybits, HwScreen->format->Rmask, HwScreen->format->Gmask, HwScreen->format->Bmask, HwScreen->format->Amask);
 
   if (Screen == NULL)
     return;
@@ -694,21 +751,61 @@ void SDLFB::Update ()
 	if (SDL_LockSurface (Screen) == -1)
 		return;
 
-  GPfx.Convert(MemBuffer, Pitch, Screen->pixels, Screen->pitch, Width, Height, FRACUNIT, FRACUNIT, 0, 0);
-	SDL_UnlockSurface (Screen);
 
-  if (scaler == Scaler::ASPECT)
+
+  if (shouldResize)
   {
-    if (scalerChanged)
-      SDL_FillRect(HwScreen, nullptr, 0x000);
+    if (scaler == Scaler::NATIVE)
+    {
+      screenWidth = 240;
+      screenHeight = 240;
+    }
+    else
+    {
+      screenWidth = 320;
+      screenHeight = 240;
+    }
 
-    downscale_320x240_to_240x180_bilinearish(Screen, HwScreen);
+    resize(screenWidth, screenHeight, 32);
+
+    SDL_FreeSurface(Screen);
+
+    Screen = SDL_CreateRGBSurface(SDL_SWSURFACE, screenWidth, screenHeight, vid_displaybits, HwScreen->format->Rmask, HwScreen->format->Gmask, HwScreen->format->Bmask, HwScreen->format->Amask);
+    SDL_SetAlpha(Screen, 0, 0);
+
+    assert(!framebuffer->IsLocked());
+    assert(framebuffer->Screen);
+
+    delete[] framebuffer->MemBuffer;
+    framebuffer->MemBuffer = new BYTE[screenWidth * screenHeight];
+    memset(framebuffer->MemBuffer, 0, screenWidth * screenHeight);
+
+    shouldResize = false;
   }
-  else if (scaler == Scaler::STRETCHED)
+
+
+  if (scaler == Scaler::NATIVE)
   {
-    downscale_320x240_to_240x240_bilinearish(Screen, HwScreen);
-
+    GPfx.Convert(MemBuffer, Pitch, HwScreen->pixels, HwScreen->pitch, Width, Height, FRACUNIT, FRACUNIT, 0, 0);
   }
+  else
+  {
+    GPfx.Convert(MemBuffer, Pitch, Screen->pixels, Screen->pitch, Width, Height, FRACUNIT, FRACUNIT, 0, 0);
+    SDL_UnlockSurface(Screen);
+
+    if (scaler == Scaler::ASPECT)
+    {
+      if (scalerChanged)
+        SDL_FillRect(HwScreen, nullptr, 0x000);
+
+      downscale_320x240_to_240x180_bilinearish(Screen, HwScreen);
+    }
+    else if (scaler == Scaler::STRETCHED)
+    {
+      downscale_320x240_to_240x240_bilinearish(Screen, HwScreen);
+    }
+  }
+
 
 
   scalerChanged = false;
